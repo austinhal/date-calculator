@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import Script from 'next/script';
 
 const calculateDifference = (
   a: string | Date,
@@ -130,8 +131,16 @@ export default function DateCalculator() {
       </Tabs>
 
       {/* Ad Placeholder */}
-      <div className="mt-8 border p-4 text-center bg-gray-100 rounded">
-        <p>🔗 Your Ad Here — Monetize with Google AdSense or Affiliate Banners</p>
+      <div className="mt-8 text-center">
+        <ins className="adsbygoogle"
+          style={{ display: 'block' }}
+          data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+          data-ad-slot="YYYYYYYYYY"
+          data-ad-format="auto"
+          data-full-width-responsive="true"></ins>
+        <Script id="adsense-load" strategy="afterInteractive">
+          {`(adsbygoogle = window.adsbygoogle || []).push({});`}
+        </Script>
       </div>
     </main>
   );
