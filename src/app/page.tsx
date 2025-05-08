@@ -50,6 +50,7 @@ const timezones = [
 ];
 
 export default function DateCalculator() {
+  const [isDark, setIsDark] = useState(false);
   const [dateA, setDateA] = useState('');
   const [dateB, setDateB] = useState('');
   const [sinceDate, setSinceDate] = useState('');
@@ -79,9 +80,41 @@ export default function DateCalculator() {
     return () => clearInterval(interval);
   }, [sinceDate, format]);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const stored = localStorage.getItem('theme');
+      const prefersDark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+        setIsDark(true);
+      } else {
+        document.documentElement.classList.remove('dark');
+        setIsDark(false);
+      }
+    }
+  }, []);
+
   return (
-    <main className="max-w-3xl mx-auto p-6">
+    <main className="max-w-3xl mx-auto p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-4">🕰️ Date Calculator</h1>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => {
+            const isNowDark = !document.documentElement.classList.contains('dark');
+            if (isNowDark) {
+              document.documentElement.classList.add('dark');
+              localStorage.setItem('theme', 'dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+              localStorage.setItem('theme', 'light');
+            }
+            setIsDark(isNowDark);
+          }}
+          className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded"
+        >
+          Toggle {isDark ? 'Light' : 'Dark'} Mode
+        </button>
+      </div>
       <Tabs defaultValue="between">
         <TabsList className="mb-4">
           <TabsTrigger value="between">Time Between Dates</TabsTrigger>
@@ -90,7 +123,7 @@ export default function DateCalculator() {
         </TabsList>
 
         <TabsContent value="between">
-          <Card className="mb-4">
+          <Card className="mb-4 bg-white dark:bg-gray-800">
             <CardContent className="p-4 space-y-2">
               <div>
                 <label>Date A:</label>
@@ -118,7 +151,7 @@ export default function DateCalculator() {
         </TabsContent>
 
         <TabsContent value="since">
-          <Card>
+          <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-4 space-y-2">
               <div>
                 <label>Past Date:</label>
@@ -142,10 +175,10 @@ export default function DateCalculator() {
         </TabsContent>
 
         <TabsContent value="scheduler">
-          <Card>
+          <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-4 space-y-4">
               <h2 className="text-2xl font-semibold">🕓 Timezone Scheduler</h2>
-              <p className="text-muted-foreground">Choose a meeting time in your timezone and see how it maps to others.</p>
+              <p className="text-muted-foreground dark:text-gray-400">Choose a meeting time in your timezone and see how it maps to others.</p>
               <div>
                 <label>Your Meeting Time:</label>
                 <Input type="datetime-local" value={meetingTime} onChange={e => setMeetingTime(e.target.value)} />
@@ -162,7 +195,7 @@ export default function DateCalculator() {
               <div>
                 <h3 className="font-medium mb-2">Participants:</h3>
                 {participants.map((p, i) => (
-                  <div key={i} className="flex flex-col gap-2 mb-4 border-b pb-2">
+                  <div key={i} className="flex flex-col gap-2 mb-4 border-b border-gray-300 dark:border-gray-700 pb-2">
                     <Input
                       placeholder="Name"
                       value={p.name}
@@ -212,16 +245,20 @@ export default function DateCalculator() {
                 ))}
                 <button
                   type="button"
-                  className="bg-gray-100 rounded px-3 py-1 text-sm hover:bg-gray-200"
+                  className="bg-gray-100 dark:bg-gray-700 rounded px-3 py-1 text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
                   onClick={() => setParticipants([...participants, { name: '', timezone: 'UTC', workStart: '09:00', workEnd: '17:00' }])}
                 >
                   + Add Participant
                 </button>
-                {meetingTime && !isNaN(new Date(meetingTime).getTime()) && (
+                {(() => {
+                  console.log("Meeting Time:", meetingTime);
+                  console.log("Parsed Date:", new Date(meetingTime));
+                  return true;
+                })() && (
                   <div className="mt-6">
                     <h4 className="text-lg font-semibold mb-2">Meeting Time Results:</h4>
-                    <table className="w-full border text-sm">
-                      <thead className="bg-gray-100">
+                    <table className="w-full border text-sm border-gray-300 dark:border-gray-700">
+                      <thead className="bg-gray-100 dark:bg-gray-800">
                         <tr>
                           <th className="p-2 text-left">Participant</th>
                           <th className="p-2 text-left">Local Time</th>
@@ -230,20 +267,25 @@ export default function DateCalculator() {
                       </thead>
                       <tbody>
                         {participants.map((p, i) => {
-                          const localTimeStr = formatInTimeZone(
-                            toZonedTime(new Date(meetingTime), timezone),
-                            p.timezone,
-                            'yyyy-MM-dd HH:mm'
-                          );
-                          const timeOnly = localTimeStr.split(' ')[1];
-                          const isGood = timeOnly >= p.workStart && timeOnly <= p.workEnd;
-                          const displayTime = formatInTimeZone(
-                            toZonedTime(new Date(meetingTime), timezone),
-                            p.timezone,
-                            'yyyy-MM-dd HH:mm zzz'
-                          );
+                          // Compute meeting time display logic with error handling and validation
+                          let localTimeStr = '--';
+                          let timeOnly = '';
+                          let displayTime = '--';
+                          let isGood = false;
+                          try {
+                            if (meetingTime && !isNaN(new Date(meetingTime).getTime())) {
+                              const baseDate = new Date(meetingTime);
+                              const base = toZonedTime(baseDate, timezone);
+                              localTimeStr = formatInTimeZone(base, p.timezone, 'yyyy-MM-dd HH:mm');
+                              timeOnly = localTimeStr.split(' ')[1];
+                              isGood = timeOnly >= p.workStart && timeOnly <= p.workEnd;
+                              displayTime = formatInTimeZone(base, p.timezone, 'yyyy-MM-dd HH:mm zzz');
+                            }
+                          } catch (err) {
+                            console.error('Invalid meetingTime for:', p.name, err);
+                          }
                           return (
-                            <tr key={i} className="border-t">
+                            <tr key={i} className="border-t border-gray-300 dark:border-gray-700">
                               <td className="p-2">{p.name || '(Unnamed)'}</td>
                               <td className="p-2">{displayTime}</td>
                               <td className="p-2">{isGood ? '✅ Available' : '❌ Unavailable'}</td>
